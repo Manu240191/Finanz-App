@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Finanzübersicht</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b2430">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finanzen">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --ink:#1b2430; --paper:#f6f3ec; --paper-2:#ece7d9; --line:#d8d0bd;
+  --gold:#8a6d1f; --gold-bg:#f1e8cd; --rust:#8c3b2e; --rust-bg:#f3e2dd;
+  --muted:#6b6357; --accent:#2f4a44;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#e9e4d6; --paper:#181c1f; --paper-2:#20262a; --line:#333c40;
+    --gold:#d8b45a; --gold-bg:#2a2513; --rust:#d97b68; --rust-bg:#2c1a17;
+    --muted:#9a9488; --accent:#7fa89c;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#e9e4d6; --paper:#181c1f; --paper-2:#20262a; --line:#333c40;
+  --gold:#d8b45a; --gold-bg:#2a2513; --rust:#d97b68; --rust-bg:#2c1a17;
+  --muted:#9a9488; --accent:#7fa89c;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100%; background:var(--paper); color:var(--ink);
+  font-family: "Iowan Old Style","Palatino Linotype",Georgia,serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:720px; margin:0 auto; padding:20px 18px 60px;}
+header{margin-bottom:18px;}
+h1{
+  font-size:1.5rem; font-weight:600; margin:0 0 2px; letter-spacing:.2px;
+}
+.sub{color:var(--muted); font-size:.85rem; font-family:Georgia,serif;}
+nav{
+  display:flex; gap:2px; margin:18px 0 16px; border-bottom:1px solid var(--line);
+  overflow-x:auto;
+}
+nav button{
+  font-family:inherit; font-size:.88rem; padding:9px 14px; background:none; border:none;
+  color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
+}
+nav button.active{color:var(--ink); border-color:var(--accent); font-weight:600;}
+.card{
+  background:var(--paper-2); border:1px solid var(--line); border-radius:3px;
+  padding:16px; margin-bottom:14px;
+}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;}
+@media(max-width:520px){.grid3{grid-template-columns:1fr;}}
+.stat .label{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
+.stat .num{
+  font-family:"SF Mono",Menlo,Consolas,monospace; font-size:1.35rem; margin-top:4px;
+}
+.pos{color:var(--accent);} .neg{color:var(--rust);}
+table{width:100%; border-collapse:collapse; font-size:.9rem;}
+th{
+  text-align:left; font-weight:600; font-size:.72rem; text-transform:uppercase;
+  letter-spacing:.4px; color:var(--muted); padding:6px 6px; border-bottom:1px solid var(--line);
+}
+td{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top;}
+td.num, th.num{
+  font-family:"SF Mono",Menlo,Consolas,monospace; text-align:right; white-space:nowrap;
+}
+tr:last-child td{border-bottom:none;}
+.rowdel{color:var(--rust); cursor:pointer; font-size:.85rem; background:none; border:none; font-family:inherit; padding:0 4px;}
+.addrow{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;}
+.addrow input, .addrow select{
+  font-family:inherit; font-size:.88rem; padding:8px 9px; border:1px solid var(--line);
+  border-radius:3px; background:var(--paper); color:var(--ink); flex:1 1 100px;
+}
+.addrow button, .primary{
+  font-family:inherit; font-size:.88rem; padding:8px 14px; border:1px solid var(--accent);
+  background:var(--accent); color:var(--paper); border-radius:3px; cursor:pointer;
+}
+.ghost{
+  font-family:inherit; font-size:.82rem; padding:7px 12px; border:1px solid var(--line);
+  background:none; color:var(--ink); border-radius:3px; cursor:pointer;
+}
+.toolbar{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+h2{font-size:1.05rem; margin:0 0 10px; font-weight:600;}
+.empty{color:var(--muted); font-size:.88rem; padding:10px 0; font-style:italic;}
+.bar{height:6px;background:var(--line);border-radius:3px;margin:6px 0 2px}.bar span{display:block;height:100%;background:var(--accent);border-radius:3px}
+.hint{color:var(--muted); font-size:.78rem; margin-top:6px;}
+footer{margin-top:30px; color:var(--muted); font-size:.75rem; text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Finanzübersicht</h1>
+    <div class="sub" id="today"></div>
+  </header>
+
+  <nav id="tabs">
+    <button data-tab="dash" class="active">Übersicht</button>
+    <button data-tab="goals">Ziele</button>
+    <button data-tab="fix">Fixausgaben</button>
+    <button data-tab="verm">Vermögen</button>
+    <button data-tab="anl">Anlagen</button>
+    <button data-tab="immo">Immobilien</button>
+    <button data-tab="haus">Haushaltsbuch</button>
+  </nav>
+
+  <div id="dash"></div>
+  <div id="goals" style="display:none"></div>
+  <div id="fix" style="display:none"></div>
+  <div id="verm" style="display:none"></div>
+  <div id="anl" style="display:none"></div>
+  <div id="immo" style="display:none"></div>
+  <div id="haus" style="display:none"></div>
+
+  <div class="toolbar">
+    <button class="ghost" onclick="exportData()">Daten exportieren (JSON)</button>
+    <label class="ghost" style="cursor:pointer;">
+      Daten importieren
+      <input type="file" accept="application/json" style="display:none" onchange="importData(event)">
+    </label>
+  </div>
+  <footer>Alle Daten bleiben lokal in diesem Browser gespeichert.</footer>
+</div>
+
+<script>
+const LS_KEY='finanzuebersicht_v1';
+let data = load();
+fixData();
+function fixData(){ data.anl=data.anl||[]; data.prices=data.prices||{}; data.settings=data.settings||{}; data.goals=data.goals||[]; data.tasks=data.tasks||[]; data.immo=data.immo||[]; data.toepfe=data.toepfe||[]; }
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { fix:[], verm:[], haus:[] };
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){}
+}
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function fmt(n){
+  return (n<0?'−':'') + Math.abs(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+}
+document.getElementById('today').textContent = new Date().toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+// ---- Tabs ----
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['dash','goals','fix','verm','anl','immo','haus'].forEach(id=>{
+    document.getElementById(id).style.display = (id===btn.dataset.tab)?'block':'none';
+  });
+});
+
+// ---- Fixausgaben ----
+function renderFix(){
+  const monthly = data.fix.reduce((s,f)=> s + (f.interval==='jährlich'? f.amount/12 : f.amount),0);
+  let rows = data.fix.map(f=>`<tr>
+    <td>${esc(f.name)}</td>
+    <td>${f.interval}</td>
+    <td class="num">${fmt(f.amount)}</td>
+    <td><button class="rowdel" onclick="delItem('fix','${f.id}')">✕</button></td>
+  </tr>`).join('');
+  document.getElementById('fix').innerHTML = `
+    <div class="card">
+      <h2>Fixausgaben</h2>
+      <div class="hint">Monatliche Summe: <strong>${fmt(monthly)}</strong></div>
+      <table style="margin-top:10px">
+        <tr><th>Name</th><th>Intervall</th><th class="num">Betrag</th><th></th></tr>
+        ${rows || '<tr><td colspan="4" class="empty">Noch keine Fixausgaben erfasst.</td></tr>'}
+      </table>
+      <div class="addrow">
+        <input id="fix_name" placeholder="Miete, Strom …">
+        <select id="fix_interval"><option>monatlich</option><option>jährlich</option></select>
+        <input id="fix_amount" type="number" step="0.01" placeholder="Betrag €">
+        <button onclick="addFix()">Hinzufügen</button>
+      </div>
+    </div>`;
+}
+function addFix(){
+  const name=document.getElementById('fix_name').value.trim();
+  const amount=parseFloat(document.getElementById('fix_amount').value);
+  const interval=document.getElementById('fix_interval').value;
+  if(!name || isNaN(amount)) return;
+  data.fix.push({id:uid(),name,amount,interval});
+  save(); renderFix(); renderDash();
+}
+
+// ---- Vermögen ----
+function renderVerm(){
+  const total = data.verm.reduce((s,v)=>s+v.betrag,0);
+  let rows = [...data.verm].sort((a,b)=>a.anbieter.localeCompare(b.anbieter)).map(v=>`<tr>
+    <td>${esc(v.name)}</td>
+    <td>${esc(v.anbieter)}</td>
+    <td class="num">${fmt(v.betrag)}</td>
+    <td>${v.datum}</td>
+    <td><button class="rowdel" onclick="delItem('verm','${v.id}')">✕</button></td>
+  </tr>`).join('');
+  document.getElementById('verm').innerHTML = `
+    <div class="card">
+      <h2>Vermögensübersicht</h2>
+      <div class="hint">Summe Konten & Positionen: <strong>${fmt(total)}</strong></div>
+      <table style="margin-top:10px">
+        <tr><th>Position</th><th>Anbieter</th><th class="num">Stand</th><th>Datum</th><th></th></tr>
+        ${rows || '<tr><td colspan="5" class="empty">Noch keine Vermögenswerte erfasst.</td></tr>'}
+      </table>
+      <div class="addrow">
+        <input id="verm_name" placeholder="Depot, Tagesgeld …">
+        <input id="verm_anbieter" placeholder="Anbieter">
+        <input id="verm_betrag" type="number" step="0.01" placeholder="Stand €">
+        <input id="verm_datum" type="date">
+        <button onclick="addVerm()">Hinzufügen</button>
+      </div>
+      <div class="hint">Aktualisiere hier alle 2 Wochen deinen Stand pro Anbieter — bearbeite dazu einfach den bestehenden Eintrag (löschen + neu anlegen).</div>
+    </div>` + toepfeHtml();
+  document.getElementById('verm_datum').valueAsDate = new Date();
+}
+function addVerm(){
+  const name=document.getElementById('verm_name').value.trim();
+  const anbieter=document.getElementById('verm_anbieter').value.trim();
+  const betrag=parseFloat(document.getElementById('verm_betrag').value);
+  const datum=document.getElementById('verm_datum').value || new Date().toISOString().slice(0,10);
+  if(!name || !anbieter || isNaN(betrag)) return;
+  data.verm.push({id:uid(),name,anbieter,betrag,datum});
+  save(); renderVerm(); renderDash();
+}
+
+// ---- Haushaltsbuch ----
+function renderHaus(){
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const einnahmen = data.haus.filter(h=>h.betrag>0 && h.datum.startsWith(thisMonth)).reduce((s,h)=>s+h.betrag,0);
+  const ausgaben = data.haus.filter(h=>h.betrag<0 && h.datum.startsWith(thisMonth)).reduce((s,h)=>s+h.betrag,0);
+  let rows = [...data.haus].sort((a,b)=>b.datum.localeCompare(a.datum)).map(h=>`<tr>
+    <td>${h.datum}</td>
+    <td>${esc(h.kategorie)}</td>
+    <td>${esc(h.beschreibung)}</td>
+    <td class="num ${h.betrag<0?'neg':'pos'}">${fmt(h.betrag)}</td>
+    <td><button class="rowdel" onclick="delItem('haus','${h.id}')">✕</button></td>
+  </tr>`).join('');
+  document.getElementById('haus').innerHTML = `
+    <div class="card">
+      <h2>Haushaltsbuch</h2>
+      <div class="hint">Dieser Monat — Einnahmen: <strong class="pos">${fmt(einnahmen)}</strong> · Ausgaben: <strong class="neg">${fmt(ausgaben)}</strong> · Saldo: <strong>${fmt(einnahmen+ausgaben)}</strong></div>
+      <table style="margin-top:10px">
+        <tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th class="num">Betrag</th><th></th></tr>
+        ${rows || '<tr><td colspan="5" class="empty">Noch keine Buchungen erfasst.</td></tr>'}
+      </table>
+      <div class="addrow">
+        <input id="haus_datum" type="date">
+        <input id="haus_kategorie" placeholder="Kategorie">
+        <input id="haus_beschreibung" placeholder="Beschreibung">
+        <input id="haus_betrag" type="number" step="0.01" placeholder="Betrag (− für Ausgabe)">
+        <button onclick="addHaus()">Buchen</button>
+      </div>
+    </div>`;
+  document.getElementById('haus_datum').valueAsDate = new Date();
+}
+function addHaus(){
+  const datum=document.getElementById('haus_datum').value || new Date().toISOString().slice(0,10);
+  const kategorie=document.getElementById('haus_kategorie').value.trim() || 'Sonstiges';
+  const beschreibung=document.getElementById('haus_beschreibung').value.trim();
+  const betrag=parseFloat(document.getElementById('haus_betrag').value);
+  if(isNaN(betrag)) return;
+  data.haus.push({id:uid(),datum,kategorie,beschreibung,betrag});
+  save(); renderHaus(); renderDash();
+}
+
+// ---- Töpfe (zweckgebundene Konten) ----
+function toepfeSum(){ return data.toepfe.reduce((s,t)=>s+t.stand,0); }
+function toepfeHtml(){
+  const rate=data.toepfe.reduce((s,t)=>s+(t.rate||0),0);
+  const rows=data.toepfe.map(t=>{
+    const pr=t.soll?Math.min(100,t.stand/t.soll*100):null; let e='';
+    if(t.soll&&t.stand<t.soll){
+      if(t.rate>0){ const n=Math.ceil((t.soll-t.stand)/t.rate), d=new Date(); d.setMonth(d.getMonth()+n); e=' · voll im '+d.toLocaleDateString('de-DE',{month:'long',year:'numeric'}); }
+      else e=' · keine Zuführung';
+    } else if(t.soll) e=' · Soll erreicht';
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--line)">
+      <strong>${esc(t.name)}</strong> <span style="float:right;font-family:Menlo,Consolas,monospace">${fmt(t.stand)}</span>
+      <button class="rowdel" onclick="delItem('toepfe','${t.id}')">✕</button>
+      ${pr!==null?`<div class="bar"><span style="width:${pr}%"></span></div>`:''}
+      <div class="hint">${t.soll?'Soll '+fmt(t.soll):''}${t.soll&&t.rate?' · ':''}${t.rate?fmt(t.rate)+' / Monat':''}${e}</div>
+      <button class="ghost" style="margin-top:6px" onclick="setStand('${t.id}')">Stand ändern</button></div>`;
+  }).join('');
+  return `<div class="card"><h2>Töpfe</h2>
+    <div class="hint">Zweckgebundene Konten (z. B. Geldmagnet, Auto, Urlaub). Summe: <strong>${fmt(toepfeSum())}</strong> · Zuführung: <strong>${fmt(rate)} / Monat</strong>. Zählt ins Gesamtvermögen, wird aber getrennt von den Anlagen geführt.</div>
+    ${rows||'<div class="empty">Noch keine Töpfe angelegt.</div>'}
+    <div class="addrow"><input id="tp_name" placeholder="Name (Auto, Urlaub …)"><input id="tp_stand" type="number" step="0.01" placeholder="Stand €"><input id="tp_soll" type="number" step="0.01" placeholder="Soll € (optional)"><input id="tp_rate" type="number" step="0.01" placeholder="€ / Monat"><button onclick="addTopf()">Anlegen</button></div></div>`;
+}
+function addTopf(){
+  const name=document.getElementById('tp_name').value.trim(); if(!name) return;
+  const g=id=>parseFloat(document.getElementById(id).value)||0;
+  data.toepfe.push({id:uid(),name,stand:g('tp_stand'),soll:g('tp_soll'),rate:g('tp_rate')});
+  save(); renderVerm(); renderDash();
+}
+function setStand(id){
+  const t=data.toepfe.find(x=>x.id===id); if(!t) return;
+  const v=parseFloat((prompt('Aktueller Stand in €:',t.stand)||'').replace(',','.')); if(isNaN(v)) return;
+  t.stand=v; save(); renderVerm(); renderDash();
+}
+
+// ---- Anlagen (Krypto, Aktien, ETFs) ----
+function anlGroups(){
+  const g={};
+  data.anl.forEach(k=>{
+    const key=k.typ+'|'+k.kennung;
+    g[key]=g[key]||{key,typ:k.typ,kennung:k.kennung,name:k.name,menge:0,invest:0};
+    g[key].menge+=k.menge; g[key].invest+=k.betrag;
+  });
+  return Object.values(g).map(x=>{
+    const p=data.prices[x.key];
+    x.kurs=p?p.price:null; x.wert=p?p.price*x.menge:null; return x;
+  });
+}
+function anlSum(){ return anlGroups().reduce((s,x)=>s+(x.wert!==null?x.wert:x.invest),0); }
+function pct(a,b){ return b? ((a-b)/b*100).toLocaleString('de-DE',{maximumFractionDigits:1})+' %':'–'; }
+function renderAnl(){
+  const gs=anlGroups();
+  const inv=gs.reduce((s,x)=>s+x.invest,0), val=anlSum();
+  const rows=gs.map(x=>{
+    const w=x.wert!==null?x.wert:null, d=w!==null?w-x.invest:null;
+    return `<tr>
+      <td>${esc(x.name||x.kennung)}<div class="hint">${x.typ} · ${esc(x.kennung)}</div></td>
+      <td class="num">${x.menge.toLocaleString('de-DE',{maximumFractionDigits:6})}</td>
+      <td class="num">${fmt(x.invest)}</td>
+      <td class="num">${w!==null?fmt(w):'kein Kurs'}</td>
+      <td class="num ${d!==null&&d<0?'neg':'pos'}">${d!==null?pct(w,x.invest):'–'}</td>
+      <td><button class="rowdel" style="color:var(--accent)" onclick="setPrice('${x.key}')">Kurs</button></td>
+    </tr>`}).join('');
+  const buys=[...data.anl].sort((a,b)=>b.datum.localeCompare(a.datum)).map(k=>`<tr>
+      <td>${k.datum}</td><td>${esc(k.name||k.kennung)}</td>
+      <td class="num">${k.menge.toLocaleString('de-DE',{maximumFractionDigits:6})}</td>
+      <td class="num">${fmt(k.betrag)}</td>
+      <td><button class="rowdel" onclick="delItem('anl','${k.id}')">✕</button></td></tr>`).join('');
+  document.getElementById('anl').innerHTML=`
+    <div class="card">
+      <h2>Anlagen</h2>
+      <div class="hint">Investiert: <strong>${fmt(inv)}</strong> · Aktueller Wert: <strong>${fmt(val)}</strong> · <span class="${val<inv?'neg':'pos'}">${pct(val,inv)}</span></div>
+      <div class="toolbar" style="margin-top:10px"><button class="primary" onclick="refreshPrices()">Kurse aktualisieren</button></div>
+      <div class="hint" id="anl_status"></div>
+      <table style="margin-top:10px">
+        <tr><th>Position</th><th class="num">Menge</th><th class="num">Investiert</th><th class="num">Wert</th><th class="num">±</th><th></th></tr>
+        ${rows||'<tr><td colspan="6" class="empty">Noch keine Käufe erfasst.</td></tr>'}
+      </table>
+    </div>
+    <div class="card">
+      <h2>Kauf erfassen (auch Sparplan-Raten)</h2>
+      <div class="addrow">
+        <select id="anl_typ"><option>Krypto</option><option>Aktie</option><option>ETF</option></select>
+        <input id="anl_kennung" placeholder="Kennung: bitcoin / AAPL / VWCE">
+        <input id="anl_name" placeholder="Name (optional)">
+        <input id="anl_datum" type="date">
+        <input id="anl_menge" type="number" step="any" placeholder="Menge (Stück/Coins)">
+        <input id="anl_betrag" type="number" step="0.01" placeholder="Bezahlt gesamt €">
+        <button onclick="addAnl()">Hinzufügen</button>
+      </div>
+      <div class="hint">Krypto-Kennung = CoinGecko-ID (z. B. bitcoin, ethereum, solana). Aktien/ETFs: Ticker; für automatische Kurse einen kostenlosen Twelve-Data-Schlüssel eintragen, sonst Kurs per „Kurs"-Knopf von Hand setzen.</div>
+      <div class="addrow"><input id="anl_key" type="password" placeholder="Twelve-Data-API-Schlüssel (optional)" value="${esc(data.settings.tdKey||'')}"><button onclick="saveKey()">Speichern</button></div>
+    </div>
+    <div class="card">
+      <h2>Einzelne Käufe</h2>
+      <table><tr><th>Datum</th><th>Position</th><th class="num">Menge</th><th class="num">Betrag</th><th></th></tr>
+      ${buys||'<tr><td colspan="5" class="empty">Noch keine Käufe.</td></tr>'}</table>
+    </div>`;
+  document.getElementById('anl_datum').valueAsDate=new Date();
+}
+function addAnl(){
+  const typ=document.getElementById('anl_typ').value;
+  const kennung=document.getElementById('anl_kennung').value.trim();
+  const name=document.getElementById('anl_name').value.trim();
+  const datum=document.getElementById('anl_datum').value||new Date().toISOString().slice(0,10);
+  const menge=parseFloat(document.getElementById('anl_menge').value);
+  const betrag=parseFloat(document.getElementById('anl_betrag').value);
+  if(!kennung||isNaN(menge)||isNaN(betrag)) return;
+  data.anl.push({id:uid(),typ,kennung:typ==='Krypto'?kennung.toLowerCase():kennung.toUpperCase(),name,datum,menge,betrag});
+  save(); renderAnl(); renderDash();
+}
+function saveKey(){ data.settings.tdKey=document.getElementById('anl_key').value.trim(); save(); }
+function setPrice(key){
+  const s=prompt('Aktueller Kurs pro Stück in €:'); if(!s) return;
+  const v=parseFloat(s.replace(',','.')); if(isNaN(v)) return;
+  data.prices[key]={price:v,ts:Date.now()}; save(); renderAnl(); renderDash();
+}
+async function refreshPrices(){
+  const gs=anlGroups(), st=document.getElementById('anl_status'), fails=[];
+  st.textContent='Lade Kurse …';
+  const cr=gs.filter(x=>x.typ==='Krypto');
+  if(cr.length){
+    try{
+      const ids=[...new Set(cr.map(x=>x.kennung))].join(',');
+      const j=await (await fetch('https://api.coingecko.com/api/v3/simple/price?ids='+encodeURIComponent(ids)+'&vs_currencies=eur')).json();
+      cr.forEach(x=>{ const v=j[x.kennung]; if(v&&v.eur) data.prices[x.key]={price:v.eur,ts:Date.now()}; else fails.push(x.kennung); });
+    }catch(e){ cr.forEach(x=>fails.push(x.kennung)); }
+  }
+  for(const x of gs.filter(x=>x.typ!=='Krypto')){
+    const key=data.settings.tdKey; if(!key){ fails.push(x.kennung); continue; }
+    try{
+      const j=await (await fetch('https://api.twelvedata.com/price?symbol='+encodeURIComponent(x.kennung)+'&apikey='+key)).json();
+      if(j.price) data.prices[x.key]={price:parseFloat(j.price),ts:Date.now()}; else fails.push(x.kennung);
+    }catch(e){ fails.push(x.kennung); }
+  }
+  save(); renderAnl(); renderDash();
+  document.getElementById('anl_status').textContent=fails.length?'Kein automatischer Kurs für: '+fails.join(', ')+' – Kennung prüfen oder Kurs von Hand setzen.':'Kurse aktualisiert.';
+}
+
+// ---- Immobilien ----
+function pf(x){ return x.toLocaleString('de-DE',{maximumFractionDigits:2})+' %'; }
+function immoNetto(){ return data.immo.reduce((s,o)=>s+o.marktwert-o.restschuld,0); }
+function calcImmo(p){
+  const gesamt=p.kaufpreis*(1+p.nk/100), darl=Math.max(0,gesamt-p.ek);
+  const rate=darl*(p.zins+p.tilgung)/1200, jm=p.miete*12;
+  const cf=p.miete-p.kosten-rate;
+  return {gesamt, nkEur:gesamt-p.kaufpreis, darl, rate, cf,
+    brutto:p.kaufpreis?jm/p.kaufpreis*100:0,
+    netto:gesamt?(jm-p.kosten*12)/gesamt*100:0,
+    faktor:jm?p.kaufpreis/jm:0,
+    qm:p.flaeche?p.kaufpreis/p.flaeche:0,
+    ekr:p.ek>0?(cf*12+darl*p.tilgung/100)/p.ek*100:null};
+}
+function immoTable(p){
+  const c=calcImmo(p), col=v=>v<0?'neg':'pos';
+  const r=(l,v,cls)=>`<tr><td>${l}</td><td class="num ${cls||''}">${v}</td></tr>`;
+  return `<table>
+    ${r('Kaufnebenkosten',fmt(c.nkEur))}${r('Gesamtinvestition',fmt(c.gesamt))}${r('Darlehen',fmt(c.darl))}
+    ${r('Rate / Monat',fmt(c.rate))}${r('Cashflow / Monat (vor Steuern)',fmt(c.cf),col(c.cf))}
+    ${r('Bruttomietrendite',pf(c.brutto))}${r('Nettomietrendite',pf(c.netto))}
+    ${r('Kaufpreisfaktor',c.faktor.toLocaleString('de-DE',{maximumFractionDigits:1}))}
+    ${p.flaeche?r('Kaufpreis / m²',fmt(c.qm)):''}
+    ${c.ekr!==null?r('Eigenkapitalrendite (Näherung)',pf(c.ekr),col(c.ekr)):''}</table>`;
+}
+function readImmo(){
+  const g=id=>parseFloat(document.getElementById(id).value)||0;
+  return {name:document.getElementById('i_name').value.trim(),kaufpreis:g('i_kp'),nk:g('i_nk'),flaeche:g('i_fl'),miete:g('i_miete'),kosten:g('i_kosten'),ek:g('i_ek'),zins:g('i_zins'),tilgung:g('i_til')};
+}
+function liveImmo(){ document.getElementById('i_res').innerHTML=immoTable(readImmo()); }
+function renderImmo(){
+  const f=(id,lab,val,step)=>`<label class="hint" style="flex:1 1 130px">${lab}<input id="${id}" type="number" step="${step||'any'}" value="${val}" oninput="liveImmo()" style="width:100%;margin-top:3px;font-family:inherit;font-size:.88rem;padding:8px 9px;border:1px solid var(--line);border-radius:3px;background:var(--paper);color:var(--ink)"></label>`;
+  const objs=data.immo.map(o=>`<div style="padding:12px 0;border-bottom:1px solid var(--line)">
+    <strong>${esc(o.name||'Objekt')}</strong> <button class="rowdel" onclick="delItem('immo','${o.id}')">✕</button>
+    <div class="hint">Marktwert ${fmt(o.marktwert)} · Restschuld ${fmt(o.restschuld)} · <strong>Eigenkapital im Objekt ${fmt(o.marktwert-o.restschuld)}</strong></div>
+    <div class="toolbar" style="margin:8px 0"><button class="ghost" onclick="editImmo('${o.id}','marktwert','Aktueller Marktwert in €')">Marktwert ändern</button><button class="ghost" onclick="editImmo('${o.id}','restschuld','Aktuelle Restschuld in €')">Restschuld ändern</button></div>
+    ${immoTable(o)}</div>`).join('');
+  document.getElementById('immo').innerHTML=`
+    <div class="card">
+      <h2>Renditerechner</h2>
+      <div class="addrow" style="margin-top:0">
+        <input id="i_name" placeholder="Name / Adresse des Objekts" style="flex:1 1 100%" oninput="liveImmo()">
+        ${f('i_kp','Kaufpreis €',0)}${f('i_nk','Kaufnebenkosten %',10,'0.1')}${f('i_fl','Wohnfläche m²',0)}
+        ${f('i_miete','Kaltmiete € / Monat',0)}${f('i_kosten','Nicht umlagef. Kosten € / Monat',0)}${f('i_ek','Eigenkapital €',0)}
+        ${f('i_zins','Zins %',3.8,'0.01')}${f('i_til','Tilgung %',2,'0.01')}
+      </div>
+      <div id="i_res" style="margin-top:12px"></div>
+      <div class="hint">Nebenkosten: Grunderwerbsteuer (je Bundesland 3,5–6,5 %), Notar/Grundbuch (ca. 1,5–2 %), ggf. Makler. Nicht umlagefähig: z. B. Instandhaltungsrücklage, Verwaltung, Leerstandsreserve. Cashflow ohne Steuern; Eigenkapitalrendite vereinfacht (Cashflow + Tilgung im 1. Jahr).</div>
+      <div class="toolbar" style="margin-top:10px"><button class="primary" onclick="saveImmo()">Als Objekt speichern</button></div>
+    </div>
+    <div class="card"><h2>Meine Immobilien</h2>
+      <div class="hint">Netto-Immobilienvermögen (Marktwert − Restschuld): <strong>${fmt(immoNetto())}</strong> – fließt ins Gesamtvermögen ein.</div>
+      ${objs||'<div class="empty">Noch keine Objekte gespeichert.</div>'}</div>`;
+  liveImmo();
+}
+function saveImmo(){
+  const p=readImmo(); if(!p.kaufpreis) return;
+  const c=calcImmo(p);
+  data.immo.push({id:uid(),...p,name:p.name||'Objekt',marktwert:p.kaufpreis,restschuld:c.darl});
+  save(); renderImmo(); renderDash();
+}
+function editImmo(id,field,label){
+  const o=data.immo.find(x=>x.id===id); if(!o) return;
+  const v=parseFloat((prompt(label+':',o[field])||'').replace(',','.')); if(isNaN(v)) return;
+  o[field]=v; save(); renderImmo(); renderDash();
+}
+
+// ---- Ziele & Tagesplanung ----
+const LV={lang:'Langfristig',mittel:'Mittelfristig',kurz:'Kurzfristig'};
+function today(){const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);}
+function wealth(){return data.verm.reduce((s,v)=>s+v.betrag,0)+anlSum()+immoNetto()+toepfeSum();}
+function daysLeft(d){return Math.ceil((new Date(d)-new Date(today()))/864e5);}
+function sortT(a){return [...a].sort((x,y)=>(x.von||'99').localeCompare(y.von||'99'));}
+function nudge(){
+  const td=today(), t=sortT(data.tasks.filter(x=>x.datum===td)), open=t.filter(x=>!x.done);
+  const over=data.tasks.filter(x=>x.datum<td&&!x.done).length;
+  const lg=data.goals.filter(g=>g.level==='lang'&&!g.done&&g.deadline).sort((a,b)=>a.deadline.localeCompare(b.deadline))[0];
+  let m=!t.length?'Heute ist noch nichts geplant. Was bringt dich deinem Ziel einen Schritt näher?':open.length?`Heute noch offen: ${open.length} von ${t.length}. Als Nächstes: ${open[0].text}.`:'Alles für heute erledigt. Stark.';
+  if(over) m+=` ${over} Aufgabe(n) sind überfällig.`;
+  if(lg) m+=` Noch ${daysLeft(lg.deadline)} Tage bis „${lg.title}“.`;
+  return m;
+}
+function toggle(sec,id){const x=data[sec].find(x=>x.id===id); if(x){x.done=!x.done; save(); renderGoals(); renderDash();}}
+function delGoal(id){
+  const ids=new Set([id]); let ch=true;
+  while(ch){ch=false; data.goals.forEach(g=>{ if(g.parent&&ids.has(g.parent)&&!ids.has(g.id)){ids.add(g.id);ch=true;} });}
+  data.goals=data.goals.filter(g=>!ids.has(g.id));
+  data.tasks.forEach(t=>{ if(ids.has(t.goal)) t.goal=''; });
+  save(); renderGoals(); renderDash();
+}
+function monthsToGoal(W,R,rp,T){
+  const r=Math.pow(1+rp/100,1/12)-1; let v=W;
+  for(let n=0;n<=1200;n++){ if(v>=T) return n; v=v*(1+r)+R; }
+  return null;
+}
+function neededRate(W,T,n,rp){
+  if(n<=0) return null;
+  const r=Math.pow(1+rp/100,1/12)-1, g=Math.pow(1+r,n);
+  return r?Math.max(0,(T-W*g)*r/(g-1)):Math.max(0,(T-W)/n);
+}
+function saveSettings(){
+  const r=parseFloat(document.getElementById('s_rend').value), sp=parseFloat(document.getElementById('s_spar').value);
+  data.settings.rendite=isNaN(r)?5:r; data.settings.sparrate=isNaN(sp)?0:sp;
+  save(); renderGoals();
+}
+function goalRow(g,depth){
+  const dl=g.deadline?daysLeft(g.deadline):null; let extra='';
+  if(g.target){
+    const w=wealth(), p=Math.min(100,Math.max(0,w/g.target*100));
+    const rp=data.settings.rendite!==undefined?data.settings.rendite:5, R=data.settings.sparrate||0;
+    const n=monthsToGoal(w,R,rp,g.target);
+    let l1;
+    if(w>=g.target) l1='Ziel bereits erreicht.';
+    else if(n===null) l1=`Mit ${fmt(R)} / Monat und ${pf(rp)} Rendite in 100 Jahren nicht erreichbar.`;
+    else { const d=new Date(); d.setMonth(d.getMonth()+n);
+      l1=`Bei ${fmt(R)} / Monat und ${pf(rp)} Rendite erreichst du es im <strong>${d.toLocaleDateString('de-DE',{month:'long',year:'numeric'})}</strong> (in ${(n/12).toFixed(1).replace('.',',')} Jahren)${dl>0&&n*30.44>dl?' – <span class="neg">nach deinem Termin</span>':''}.`; }
+    const nr=dl>0&&w<g.target?neededRate(w,g.target,Math.round(dl/30.44),rp):null;
+    extra=`<div class="bar"><span style="width:${p}%"></span></div><div class="hint">${fmt(w)} von ${fmt(g.target)} (${p.toFixed(0)} %)</div>
+      <div class="hint">${l1}</div>${nr!==null?`<div class="hint">Für deinen Termin nötig: <strong>${fmt(nr)} / Monat</strong> bei ${pf(rp)} Rendite.</div>`:''}`;
+  }
+  const kids=data.goals.filter(k=>k.parent===g.id).map(k=>goalRow(k,depth+1)).join('');
+  return `<div style="margin-left:${depth*14}px;padding:8px 0;border-bottom:1px solid var(--line)">
+    <label><input type="checkbox" ${g.done?'checked':''} onchange="toggle('goals','${g.id}')"> <strong style="${g.done?'text-decoration:line-through;opacity:.6':''}">${esc(g.title)}</strong></label>
+    <button class="rowdel" onclick="delGoal('${g.id}')">✕</button>
+    <div class="hint">${LV[g.level]}${g.deadline?' · bis '+g.deadline+' ('+(dl<0?'überfällig':dl+' Tage')+')':''}</div>${extra}</div>${kids}`;
+}
+function taskRow(t){
+  const now=new Date().toTimeString().slice(0,5), td=today();
+  const cur=t.datum===td&&t.von&&t.von<=now&&(!t.bis||now<=t.bis)&&!t.done;
+  const gt=(data.goals.find(g=>g.id===t.goal)||{}).title;
+  return `<div style="display:flex;gap:8px;align-items:center;padding:7px 6px;border-bottom:1px solid var(--line);${cur?'background:var(--gold-bg)':''}">
+    <input type="checkbox" ${t.done?'checked':''} onchange="toggle('tasks','${t.id}')">
+    <div style="flex:1;${t.done?'text-decoration:line-through;opacity:.6':''}">${esc(t.text)}
+      <div class="hint">${t.datum!==td?t.datum+' · ':''}${t.von?t.von+(t.bis?'–'+t.bis:''):'ohne Uhrzeit'}${gt?' · '+esc(gt):''}</div></div>
+    <button class="rowdel" onclick="delItem('tasks','${t.id}')">✕</button></div>`;
+}
+function renderGoals(){
+  const td=today(), tt=sortT(data.tasks.filter(t=>t.datum===td)), over=data.tasks.filter(t=>t.datum<td&&!t.done);
+  const done=tt.filter(t=>t.done).length, p=tt.length?done/tt.length*100:0;
+  const roots=data.goals.filter(g=>!g.parent||!data.goals.some(x=>x.id===g.parent));
+  const opts='<option value="">– kein übergeordnetes Ziel –</option>'+data.goals.map(g=>`<option value="${g.id}">${LV[g.level]}: ${esc(g.title)}</option>`).join('');
+  const gopts=opts.replace('kein übergeordnetes Ziel','kein Ziel zugeordnet');
+  document.getElementById('goals').innerHTML=`
+    <div class="card">
+      <h2>Heute</h2>
+      <div class="bar"><span style="width:${p}%"></span></div><div class="hint">${done} von ${tt.length} erledigt</div>
+      ${over.length?`<div class="hint neg" style="margin-top:10px">Überfällig</div>${sortT(over).map(taskRow).join('')}`:''}
+      <div style="margin-top:8px">${tt.map(taskRow).join('')||'<div class="empty">Noch nichts für heute geplant.</div>'}</div>
+      <div class="addrow">
+        <input id="t_text" placeholder="Aufgabe" style="flex:2 1 160px">
+        <input id="t_datum" type="date"><input id="t_von" type="time"><input id="t_bis" type="time">
+        <select id="t_goal">${gopts}</select>
+        <button onclick="addTask()">Planen</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Ziele</h2>
+      <div class="addrow" style="margin-top:0;margin-bottom:8px">
+        <label class="hint" style="flex:1 1 130px">Erwartete Rendite % p.a.<input id="s_rend" type="number" step="0.1" value="${data.settings.rendite!==undefined?data.settings.rendite:5}" onchange="saveSettings()" style="width:100%;margin-top:3px"></label>
+        <label class="hint" style="flex:1 1 130px">Sparrate € / Monat<input id="s_spar" type="number" step="10" value="${data.settings.sparrate||0}" onchange="saveSettings()" style="width:100%;margin-top:3px"></label>
+      </div>
+      <div class="hint" style="margin-bottom:6px">Annahmen für die Zielrechnung. Renditen sind nicht garantiert, rechne mit vorsichtigen Werten.</div>
+      ${roots.map(g=>goalRow(g,0)).join('')||'<div class="empty">Noch keine Ziele. Starte mit einem Langfristziel.</div>'}
+      <div class="addrow">
+        <select id="g_level"><option value="lang">Langfristig</option><option value="mittel">Mittelfristig</option><option value="kurz">Kurzfristig</option></select>
+        <input id="g_title" placeholder="Ziel" style="flex:2 1 160px">
+        <input id="g_deadline" type="date">
+        <input id="g_target" type="number" step="0.01" placeholder="Zielvermögen € (optional)">
+        <select id="g_parent">${opts}</select>
+        <button onclick="addGoal()">Anlegen</button>
+      </div>
+      <div class="hint">Mit Zielvermögen vergleicht die App dein Gesamtvermögen (Vermögen + Anlagen) und rechnet den nötigen Monatsbetrag aus.</div>
+    </div>`;
+  document.getElementById('t_datum').value=td;
+}
+function addTask(){
+  const text=document.getElementById('t_text').value.trim(); if(!text) return;
+  data.tasks.push({id:uid(),text,datum:document.getElementById('t_datum').value||today(),von:document.getElementById('t_von').value,bis:document.getElementById('t_bis').value,goal:document.getElementById('t_goal').value,done:false});
+  save(); renderGoals(); renderDash();
+}
+function addGoal(){
+  const title=document.getElementById('g_title').value.trim(); if(!title) return;
+  const t=parseFloat(document.getElementById('g_target').value);
+  data.goals.push({id:uid(),level:document.getElementById('g_level').value,title,deadline:document.getElementById('g_deadline').value,target:isNaN(t)?0:t,parent:document.getElementById('g_parent').value,done:false});
+  save(); renderGoals(); renderDash();
+}
+
+// ---- Dashboard ----
+function renderDash(){
+  const monthlyFix = data.fix.reduce((s,f)=> s + (f.interval==='jährlich'? f.amount/12 : f.amount),0);
+  const totalVerm = data.verm.reduce((s,v)=>s+v.betrag,0) + anlSum() + immoNetto() + toepfeSum();
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const hausSaldo = data.haus.filter(h=>h.datum.startsWith(thisMonth)).reduce((s,h)=>s+h.betrag,0);
+  document.getElementById('dash').innerHTML = `
+    <div class="grid3">
+      <div class="card stat"><div class="label">Fixausgaben / Monat</div><div class="num">${fmt(monthlyFix)}</div></div>
+      <div class="card stat"><div class="label">Gesamtvermögen</div><div class="num">${fmt(totalVerm)}</div></div>
+      <div class="card stat"><div class="label">Haushaltsbuch (Monat)</div><div class="num ${hausSaldo<0?'neg':'pos'}">${fmt(hausSaldo)}</div></div>
+    </div>
+    <div class="card"><h2>Heute</h2><p style="margin:0;font-size:.92rem;line-height:1.5">${esc(nudge())}</p></div>
+    <div class="card">
+      <h2>Erste Schritte</h2>
+      <p style="margin:0; color:var(--muted); font-size:.9rem; line-height:1.5;">
+        Trage unter <strong>Fixausgaben</strong> deine wiederkehrenden Kosten ein, unter <strong>Vermögen</strong> deine Stände je Anbieter
+        (alle 2 Wochen aktualisieren) und unter <strong>Haushaltsbuch</strong> laufende Buchungen. Exportiere deine Daten regelmäßig als JSON,
+        um sie zu sichern oder auf ein anderes Gerät zu übertragen.
+      </p>
+    </div>`;
+}
+
+function delItem(section,id){
+  data[section] = data[section].filter(x=>x.id!==id);
+  save();
+  if(section==='fix') renderFix();
+  if(section==='verm') renderVerm();
+  if(section==='anl') renderAnl();
+  if(section==='tasks') renderGoals();
+  if(section==='immo') renderImmo();
+  if(section==='toepfe') renderVerm();
+  if(section==='haus') renderHaus();
+  renderDash();
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function exportData(){
+  try{
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'finanzuebersicht_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){ alert('Export fehlgeschlagen.'); }
+}
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.fix || !parsed.verm || !parsed.haus) throw new Error('ungültig');
+      data = parsed; fixData(); save();
+      renderFix(); renderVerm(); renderAnl(); renderImmo(); renderGoals(); renderHaus(); renderDash();
+      alert('Daten importiert.');
+    }catch(e){ alert('Import fehlgeschlagen: Datei ungültig.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+renderFix(); renderVerm(); renderAnl(); renderImmo(); renderGoals(); renderHaus(); renderDash();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
